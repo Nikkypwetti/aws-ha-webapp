@@ -38,7 +38,7 @@ The architecture is built across two Availability Zones (AZs) to prevent a singl
 
 ## 📝 Setup Instructions (Manual Console Walkthrough)
 
-*A full, step-by-step guide is available in the [SETUP-GUIDE.md](link-to-separate-setup-file) file.*
+*A full, step-by-step guide is available in the [SETUP-GUIDE.md](aws-ha-webapp/SETUP-GUIDE.md) file.*
 
 ### Key Configuration Highlights:
 
