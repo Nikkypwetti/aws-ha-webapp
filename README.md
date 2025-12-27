@@ -1,64 +1,95 @@
-# ☁️ High-Availability Web Application on AWS
+# AWS Multi-Tier, Multi-AZ High Availability Web Application
 
-![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white)
-![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
-![Status](https://img.shields.io/badge/Status-Completed-success)
+## 🚀 Project Overview
 
-## 📖 Project Overview
-This project deploys a highly available, fault-tolerant web application on AWS. It is designed to withstand the failure of an entire Availability Zone (AZ) without service interruption. 
+This project demonstrates the deployment of a highly available, fault-tolerant, and scalable 3-Tier web application architecture on Amazon Web Services (AWS). It leverages core services like VPC, EC2 Auto Scaling, Application Load Balancing (ALB), and RDS Multi-AZ to ensure the application remains operational even if an entire Availability Zone (AZ) fails.
 
-The infrastructure implements a classic **Multi-Tier Architecture**, separating the web serving layer from the logic/database layer to enhance security and scalability.
+This setup is designed to serve as a foundational, production-ready environment for a modern web application.
 
-## 🏗️ Architecture
-![Architecture Diagram](./images/architecture-diagram.png)
+### 🌐 Technologies Used
 
-**Key Components:**
-* **VPC:** Custom Virtual Private Cloud spanning two Availability Zones (e.g., `us-east-1a`, `us-east-1b`).
-* **Public Subnets:** Host the NAT Gateways and Application Load Balancer (ALB).
-* **Private Subnets:** Host the EC2 Web Servers (Application Tier) for enhanced security.
-* **Auto Scaling Group (ASG):** Automatically scales EC2 instances based on CPU utilization traffic.
-* **Application Load Balancer (ALB):** Distributes incoming HTTP traffic across healthy instances in multiple AZs.
+| Category | AWS Service | Purpose |
+| :--- | :--- | :--- |
+| **Networking** | VPC, Subnets, IGW, Route Tables | Isolated, custom network setup. |
+| **High Availability** | **2+ Availability Zones** | Disaster recovery and fault tolerance. |
+| **Compute** | EC2, Launch Templates, AMI | Virtual servers hosting the application. |
+| **Load Balancing** | Application Load Balancer (ALB) | Distributes traffic and handles HTTPS termination. |
+| **Scalability/Resilience**| **Auto Scaling Group (ASG)** | Automatically scales EC2 capacity and replaces unhealthy instances. |
+| **Database** | RDS (Relational Database Service) | Managed, highly available, Multi-AZ database. |
+| **Internet Access** | NAT Gateway, Elastic IP (EIP) | Allows private instances to initiate outbound internet connections. |
+| **Security** | Security Groups (SGs) | Controls inbound/outbound traffic flow between tiers. |
 
-## 🛠️ Tech Stack
-* **Cloud Provider:** Amazon Web Services (AWS)
-* **Compute:** Amazon EC2 (Amazon Linux 2023 AMI)
-* **Networking:** VPC, Security Groups, ELB, Route53
-* **Automation/User Data:** Bash Scripting (Apache Web Server installation)
-* **Storage:** EBS (Elastic Block Store)
+## 🏗️ Architecture Diagram
 
-## 🚀 Deployment Steps
+The architecture is built across two Availability Zones (AZs) to prevent a single point of failure (SPOF).
 
-### Prerequisites
-* AWS Free Tier Account
-* AWS CLI installed and configured (optional, if deploying via CLI)
+**(Note: You should create and insert your own visual diagram here, showing the flow below)**
 
-### Step 1: Network Configuration
-1. Created a VPC with CIDR `10.0.0.0/16`.
-2. Configured 2 Public Subnets and 2 Private Subnets across separate Availability Zones for redundancy.
-3. Attached an Internet Gateway (IGW) for public access.
-4. Configured NAT Gateways in Public Subnets to allow Private Subnet instances to update packages securely.
+### Architecture Flow:
 
-### Step 2: Security Groups
-* **ALB SG:** Allows Inbound HTTP (80) from `0.0.0.0/0`.
-* **Web Server SG:** Allows Inbound HTTP (80) **only** from the ALB Security Group ID (ensuring no direct access from the internet).
+1.  **User Request:** The user accesses the web application via the public DNS of the **Application Load Balancer (ALB)**.
+2.  **Presentation Tier (Public Subnets):** The ALB is deployed in the public subnets across AZ-A and AZ-B. It directs traffic to healthy EC2 instances in the private layer.
+3.  **Application Tier (Private App Subnets):** The **Auto Scaling Group (ASG)** maintains a minimum number of EC2 instances (Web Servers) balanced across AZ-A and AZ-B. These instances communicate with the database.
+4.  **Internet Access:** Instances in the private subnets use the **NAT Gateway** in their respective AZs to access the internet (e.g., for OS updates) without being publicly accessible.
+5.  **Data Tier (Private DB Subnets):** The **RDS Multi-AZ** deployment ensures a primary database instance is active in one AZ with a synchronous standby replica in the other AZ. This provides automatic failover at the database level.
+6.  **Security:** Security Groups enforce strict rules, ensuring the **DB Tier** only accepts connections from the **App Tier**, and the **App Tier** only accepts traffic from the **ALB**.
 
-### Step 3: Launch Templates & Auto Scaling
-1. Created an EC2 Launch Template with User Data to install Apache (`httpd`) and create a custom `index.html`.
-2. Configured an Auto Scaling Group with a target capacity of 2 and maximum of 4.
-3. Defined Scaling Policies: Scale out if Average CPU > 70%.
+## 📝 Setup Instructions (Manual Console Walkthrough)
 
-### Step 4: Testing High Availability
-1. Accessed the application via the ALB DNS name.
-2. **Chaos Engineering:** Manually terminated an instance in `us-east-1a`.
-3. **Result:** The Load Balancer immediately directed traffic to the instance in `us-east-1b`. The Auto Scaling Group detected the unhealthy instance and provisioned a replacement within 2 minutes.
+*A full, step-by-step guide is available in the [SETUP-GUIDE.md](link-to-separate-setup-file) file.*
 
-## 🧪 User Data Script
-This Bash script was used to bootstrap the instances:
+### Key Configuration Highlights:
 
-```bash
-#!/bin/bash
-yum update -y
-yum install -y httpd
-systemctl start httpd
-systemctl enable httpd
-echo "<h1>Hello World from $(hostname -f)</h1>" > /var/www/html/index.html
+| Component | Configuration | HA/Resilience Feature |
+| :--- | :--- | :--- |
+| **VPC** | CIDR: `10.0.0.0/16` | Custom network isolation. |
+| **Subnets** | 2 Public, 2 Private App, 2 Private DB | Spread across **two AZs** for fault tolerance. |
+| **Load Balancer** | Application Load Balancer (ALB) | Routes traffic, health checks, and is inherently Multi-AZ. |
+| **Auto Scaling** | Min: 2, Desired: 2, Max: 4 | Automatically maintains minimum capacity and self-heals instances. |
+| **RDS** | Multi-AZ Deployment | Synchronous replication and automatic failover for the database. |
+
+### Demonstration of High Availability
+
+To confirm the High Availability capability:
+
+1.  Access the EC2 dashboard and confirm two instances are running, one in each AZ (e.g., `us-east-1a` and `us-east-1b`).
+2.  **Manually terminate** one of the running EC2 instances.
+3.  Observe the Auto Scaling Group log: within minutes, the ASG will detect the instance termination and automatically provision a brand new replacement instance in the same AZ, maintaining the desired capacity of 2.
+4.  The application remains accessible via the ALB throughout the entire process.
+
+---
+
+## 🧹 Cleanup Instructions (Critical)
+
+It is **CRITICAL** to clean up all resources created during this project to avoid unexpected AWS billing, as services like RDS Multi-AZ, NAT Gateways, and ALBs are *not* part of the Free Tier for continuous usage.
+
+Follow these steps in the AWS Console, ensuring to delete resources in the correct order due to dependencies:
+
+### 1. Database Tier Cleanup
+
+| Service | Action | Notes |
+| :--- | :--- | :--- |
+| **RDS** | Modify the DB Instance | Turn off **Deletion Protection**. |
+| **RDS** | Delete the DB Instance | Crucially, ensure you uncheck **"Create final snapshot"** and confirm the deletion by typing `delete me` (or similar). Wait for the status to change to *Deleted*. |
+| **RDS** | Delete the **DB Subnet Group** | Delete the custom DB Subnet Group created for the RDS instance. |
+
+### 2. Compute & Load Balancing Cleanup
+
+| Service | Action | Notes |
+| :--- | :--- | :--- |
+| **Auto Scaling Group** | Delete the ASG | This will automatically terminate the EC2 instances. Set the **Desired Capacity** to `0` first if the deletion fails. |
+| **Load Balancer** | Delete the ALB | Go to EC2 > Load Balancers and delete the Application Load Balancer. |
+| **Target Groups** | Delete the Target Group | Go to EC2 > Target Groups and delete the target group associated with the ALB. |
+| **Launch Template** | Delete the Launch Template | Go to EC2 > Launch Templates and delete the template. |
+| **AMI** | Deregister the AMI | Go to EC2 > AMIs, select your custom AMI, and choose **Deregister**. |
+
+### 3. Networking Cleanup (VPC)
+
+| Service | Action | Notes |
+| :--- | :--- | :--- |
+| **NAT Gateways**| Delete the NAT Gateways | You must delete the NAT Gateways first before deleting the EIPs. |
+| **Elastic IPs (EIPs)**| Release the EIPs | Go to EC2 > Elastic IPs and select the addresses created for the NAT Gateways, then select **Release Elastic IP addresses**. |
+| **Route Tables** | Delete Custom Route Tables | Delete the two custom Private Route Tables. |
+| **Security Groups** | Delete Custom SGs | Delete the custom SGs (ALB SG, App SG, DB SG). |
+| **Internet Gateway**| Detach and Delete IGW | Detach the Internet Gateway from the VPC, then delete it. |
+| **VPC** | Delete the VPC | Finally, navigate to **Your VPCs** and select **Delete VPC**. This step will also clean up the Subnets. |
