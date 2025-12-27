@@ -23,7 +23,9 @@ This setup is designed to serve as a foundational, production-ready environment 
 
 The architecture is built across two Availability Zones (AZs) to prevent a single point of failure (SPOF).
 
-**(Note: You should create and insert your own visual diagram here, showing the flow below)**
+<br>
+
+![Architecture Diagram](./images/architecture-diagram.png)
 
 ### Architecture Flow:
 
