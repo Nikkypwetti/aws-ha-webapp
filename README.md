@@ -25,7 +25,7 @@ The architecture is built across two Availability Zones (AZs) to prevent a singl
 
 <br>
 
-![Architecture Diagram](./images/architecture-diagram.png)
+![Architecture Diagram](./infrastructure/images/architecture-diagram.png)
 
 ### Architecture Flow:
 
